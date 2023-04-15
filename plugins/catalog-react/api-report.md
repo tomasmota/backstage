@@ -13,6 +13,7 @@ import { ComponentProps } from 'react';
 import { CompoundEntityRef } from '@backstage/catalog-model';
 import { Entity } from '@backstage/catalog-model';
 import { IconButton } from '@material-ui/core';
+import { IconComponent } from '@backstage/core-plugin-api';
 import { InfoCardVariants } from '@backstage/core-components';
 import { LinkProps } from '@backstage/core-components';
 import { Observable } from '@backstage/types';
@@ -69,12 +70,16 @@ export const CatalogFilterLayout: {
 // @public (undocumented)
 export type CatalogReactComponentsNameToClassKey = {
   CatalogReactUserListPicker: CatalogReactUserListPickerClassKey;
+  CatalogReactEntityDisplayName: CatalogReactEntityDisplayNameClassKey;
   CatalogReactEntityLifecyclePicker: CatalogReactEntityLifecyclePickerClassKey;
   CatalogReactEntitySearchBar: CatalogReactEntitySearchBarClassKey;
   CatalogReactEntityTagPicker: CatalogReactEntityTagPickerClassKey;
   CatalogReactEntityOwnerPicker: CatalogReactEntityOwnerPickerClassKey;
   CatalogReactEntityProcessingStatusPicker: CatalogReactEntityProcessingStatusPickerClassKey;
 };
+
+// @public
+export type CatalogReactEntityDisplayNameClassKey = 'root' | 'icon';
 
 // @public (undocumented)
 export type CatalogReactEntityLifecyclePickerClassKey = 'input';
@@ -135,6 +140,26 @@ export type DefaultEntityFilters = {
   orphan?: EntityOrphanFilter;
   error?: EntityErrorFilter;
   namespace?: EntityNamespaceFilter;
+};
+
+// @public
+export function defaultEntityPresentation(
+  entityOrRef: Entity | CompoundEntityRef | string,
+  context?: {
+    defaultKind?: string;
+    defaultNamespace?: string;
+  },
+): EntityRefPresentationSnapshot;
+
+// @public
+export const EntityDisplayName: (props: EntityDisplayNameProps) => JSX.Element;
+
+// @public
+export type EntityDisplayNameProps = {
+  entityRef: Entity | CompoundEntityRef | string;
+  variant?: 'simple' | string;
+  defaultKind?: string;
+  defaultNamespace?: string;
 };
 
 // @public
@@ -286,6 +311,20 @@ export type EntityPeekAheadPopoverProps = PropsWithChildren<{
   delayTime?: number;
 }>;
 
+// @public
+export interface EntityPresentationApi {
+  forEntity(
+    entityOrRef: Entity | string,
+    context?: {
+      defaultKind?: string;
+      defaultNamespace?: string;
+    },
+  ): EntityRefPresentation;
+}
+
+// @public
+export const entityPresentationApiRef: ApiRef<EntityPresentationApi>;
+
 // @public (undocumented)
 export const EntityProcessingStatusPicker: () => JSX.Element;
 
@@ -307,6 +346,7 @@ export const EntityRefLink: (props: EntityRefLinkProps) => JSX.Element;
 export type EntityRefLinkProps = {
   entityRef: Entity | CompoundEntityRef | string;
   defaultKind?: string;
+  defaultNamespace?: string;
   title?: string;
   children?: React_2.ReactNode;
 } & Omit<LinkProps, 'to'>;
@@ -319,21 +359,32 @@ export function EntityRefLinks<
 // @public
 export type EntityRefLinksProps<
   TRef extends string | CompoundEntityRef | Entity,
-> = (
-  | {
-      defaultKind?: string;
-      entityRefs: TRef[];
-      fetchEntities?: false;
-      getTitle?(entity: TRef): string | undefined;
-    }
-  | {
-      defaultKind?: string;
-      entityRefs: TRef[];
-      fetchEntities: true;
-      getTitle(entity: Entity): string | undefined;
-    }
-) &
-  Omit<LinkProps, 'to'>;
+> = {
+  defaultKind?: string;
+  entityRefs: TRef[];
+  fetchEntities?: boolean;
+  getTitle?(entity: TRef): string | undefined;
+} & Omit<LinkProps, 'to'>;
+
+// @public
+export interface EntityRefPresentation {
+  snapshot: EntityRefPresentationSnapshot;
+  update$?: Observable<EntityRefPresentationSnapshot>;
+}
+
+// @public
+export interface EntityRefPresentationSnapshot {
+  // (undocumented)
+  entity?: Entity | undefined;
+  // (undocumented)
+  entityRef: string;
+  // (undocumented)
+  Icon?: IconComponent | undefined;
+  // (undocumented)
+  primaryTitle: string;
+  // (undocumented)
+  secondaryTitle?: string;
+}
 
 // @public
 export function entityRouteParams(entity: Entity): {
@@ -552,6 +603,15 @@ export function useEntityOwnership(): {
   loading: boolean;
   isOwnedEntity: (entity: Entity) => boolean;
 };
+
+// @public
+export function useEntityPresentation(
+  entityOrRef: Entity | CompoundEntityRef | string,
+  context?: {
+    defaultKind?: string;
+    defaultNamespace?: string;
+  },
+): EntityRefPresentationSnapshot;
 
 // @public
 export function useEntityTypeFilter(): {

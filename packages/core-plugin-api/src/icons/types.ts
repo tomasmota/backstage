@@ -36,10 +36,10 @@ import { ComponentType } from 'react';
 export type IconComponent = ComponentType<
   /* MUI v4 */
   | {
-      fontSize?: 'large' | 'small' | 'default';
+      fontSize?: 'large' | 'small' | 'default' | 'inherit';
     }
   /* MUI v5: https://mui.com/material-ui/migration/v5-component-changes/#icon */
   | {
-      fontSize?: 'medium' | 'large' | 'small';
+      fontSize?: 'medium' | 'large' | 'small' | 'inherit';
     }
 >;
