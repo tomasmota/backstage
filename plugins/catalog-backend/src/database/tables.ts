@@ -38,6 +38,8 @@ export type DbRefreshStateRow = {
   result_hash?: string;
   cache?: string;
   next_update_at: string | Date;
+  next_stitch_at?: string | Date | null;
+  next_stitch_ticket?: string | null;
   last_discovery_at: string | Date; // remove?
   errors?: string;
   location_key?: string;

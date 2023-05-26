@@ -16,7 +16,8 @@
 
 import { Knex } from 'knex';
 import uniq from 'lodash/uniq';
-import { DbFinalEntitiesRow, DbRefreshStateRow } from '../../tables';
+import { DbRefreshStateRow } from '../../tables';
+import { markForStitching } from '../stitcher/markForStitching';
 
 /**
  * Finds and deletes all orphaned entities, i.e. entities that do not have any
@@ -77,21 +78,10 @@ export async function deleteOrphanedEntities(options: {
       .delete()
       .whereIn('entity_id', orphanIds);
 
-    // Mark all of things that the orphans had relations to for processing and
-    // stitching
-    await tx
-      .table<DbFinalEntitiesRow>('final_entities')
-      .update({
-        hash: 'orphan-relation-deleted',
-      })
-      .whereIn('entity_id', orphanRelationIds);
-    await tx
-      .table<DbRefreshStateRow>('refresh_state')
-      .update({
-        result_hash: 'orphan-relation-deleted',
-        next_update_at: tx.fn.now(),
-      })
-      .whereIn('entity_id', orphanRelationIds);
+    await markForStitching({
+      knex: tx,
+      entityIds: orphanRelationIds,
+    });
   }
 
   return total;

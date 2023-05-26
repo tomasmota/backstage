@@ -65,7 +65,8 @@ import { DefaultCatalogProcessingEngine } from '../processing/DefaultCatalogProc
 import { DefaultLocationService } from './DefaultLocationService';
 import { DefaultEntitiesCatalog } from './DefaultEntitiesCatalog';
 import { DefaultCatalogProcessingOrchestrator } from '../processing/DefaultCatalogProcessingOrchestrator';
-import { Stitcher } from '../stitching/Stitcher';
+import { DefaultStitcherEngine } from '../stitching/DefaultStitcherEngine';
+import { DefaultStitcher } from '../stitching/DefaultStitcher';
 import {
   createRandomProcessingInterval,
   ProcessingIntervalFunction,
@@ -448,7 +449,15 @@ export class CatalogBuilder {
       await applyDatabaseMigrations(dbClient);
     }
 
+    const stitcher = new DefaultStitcher(dbClient, logger);
+    const stitcherEngine = new DefaultStitcherEngine({
+      stitcher,
+      database: dbClient,
+      logger,
+    });
+
     const processingDatabase = new DefaultProcessingDatabase({
+      stitcher,
       database: dbClient,
       logger,
       refreshInterval: this.processingInterval,
@@ -473,7 +482,6 @@ export class CatalogBuilder {
       policy,
       legacySingleProcessorValidation: this.legacySingleProcessorValidation,
     });
-    const stitcher = new Stitcher(dbClient, logger);
     const unauthorizedEntitiesCatalog = new DefaultEntitiesCatalog({
       database: dbClient,
       logger,
@@ -571,7 +579,16 @@ export class CatalogBuilder {
     await connectEntityProviders(providerDatabase, entityProviders);
 
     return {
-      processingEngine,
+      processingEngine: {
+        async start() {
+          await processingEngine.start();
+          await stitcherEngine.start();
+        },
+        async stop() {
+          await processingEngine.stop();
+          await stitcherEngine.stop();
+        },
+      },
       router,
     };
   }

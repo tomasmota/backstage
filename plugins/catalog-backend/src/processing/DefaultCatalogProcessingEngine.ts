@@ -31,7 +31,7 @@ import {
   CatalogProcessingOrchestrator,
   EntityProcessingResult,
 } from './types';
-import { Stitcher } from '../stitching/Stitcher';
+import { Stitcher } from '../stitching/types';
 import { startTaskPipeline } from './TaskPipeline';
 import { PluginTaskScheduler } from '@backstage/backend-tasks';
 import { Config } from '@backstage/config';
@@ -245,9 +245,11 @@ export class DefaultCatalogProcessingEngine implements CatalogProcessingEngine {
                 resultHash,
               });
             });
-            await this.stitcher.stitch(
-              new Set([stringifyEntityRef(unprocessedEntity)]),
-            );
+
+            await this.stitcher.markForStitching({
+              entityRefs: [stringifyEntityRef(unprocessedEntity)],
+            });
+
             track.markSuccessfulWithErrors();
             return;
           }
@@ -295,7 +297,9 @@ export class DefaultCatalogProcessingEngine implements CatalogProcessingEngine {
             }
           });
 
-          await this.stitcher.stitch(setOfThingsToStitch);
+          await this.stitcher.markForStitching({
+            entityRefs: setOfThingsToStitch,
+          });
 
           track.markSuccessfulWithChanges(setOfThingsToStitch.size);
         } catch (error) {

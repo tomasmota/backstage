@@ -16,7 +16,6 @@
 
 import { TestDatabaseId, TestDatabases } from '@backstage/backend-test-utils';
 import { Knex } from 'knex';
-import * as uuid from 'uuid';
 import { applyDatabaseMigrations } from '../../migrations';
 import {
   DbFinalEntitiesRow,
@@ -58,9 +57,8 @@ describe('deleteOrphanedEntities', () => {
 
   async function insertEntity(knex: Knex, ...entityRefs: string[]) {
     for (const ref of entityRefs) {
-      const entityId = uuid.v4();
       await knex<DbRefreshStateRow>('refresh_state').insert({
-        entity_id: entityId,
+        entity_id: `id-${ref}`,
         entity_ref: ref,
         unprocessed_entity: '{}',
         processed_entity: '{}',
@@ -70,7 +68,7 @@ describe('deleteOrphanedEntities', () => {
         result_hash: 'original',
       });
       await knex<DbFinalEntitiesRow>('final_entities').insert({
-        entity_id: entityId,
+        entity_id: `id-${ref}`,
         hash: 'original',
         stitch_ticket: '',
       });
@@ -102,7 +100,7 @@ describe('deleteOrphanedEntities', () => {
   async function refreshState(knex: Knex) {
     return await knex<DbRefreshStateRow>('refresh_state')
       .orderBy('entity_ref')
-      .select('entity_ref', 'result_hash');
+      .select('entity_ref', 'next_stitch_at');
   }
 
   async function finalEntities(knex: Knex) {
@@ -115,7 +113,7 @@ describe('deleteOrphanedEntities', () => {
       .orderBy('refresh_state.entity_ref')
       .select({
         entity_ref: 'refresh_state.entity_ref',
-        hash: 'final_entities.hash',
+        next_stitch_at: 'refresh_state.next_stitch_at',
       });
   }
 
@@ -176,20 +174,21 @@ describe('deleteOrphanedEntities', () => {
       await insertRelation(knex, 'E1', 'E2');
       await insertRelation(knex, 'E2', 'E3');
       await insertRelation(knex, 'E10', 'E6');
+      await insertRelation(knex, 'E7', 'E6');
       await expect(run(knex)).resolves.toEqual(5);
       await expect(refreshState(knex)).resolves.toEqual([
-        { entity_ref: 'E1', result_hash: 'original' },
-        { entity_ref: 'E2', result_hash: 'orphan-relation-deleted' },
-        { entity_ref: 'E7', result_hash: 'original' },
-        { entity_ref: 'E8', result_hash: 'original' },
-        { entity_ref: 'E9', result_hash: 'original' },
+        { entity_ref: 'E1', next_stitch_at: null },
+        { entity_ref: 'E2', next_stitch_at: expect.any(String) },
+        { entity_ref: 'E7', next_stitch_at: expect.any(String) },
+        { entity_ref: 'E8', next_stitch_at: null },
+        { entity_ref: 'E9', next_stitch_at: null },
       ]);
       await expect(finalEntities(knex)).resolves.toEqual([
-        { entity_ref: 'E1', hash: 'original' },
-        { entity_ref: 'E2', hash: 'orphan-relation-deleted' },
-        { entity_ref: 'E7', hash: 'original' },
-        { entity_ref: 'E8', hash: 'original' },
-        { entity_ref: 'E9', hash: 'original' },
+        { entity_ref: 'E1', next_stitch_at: null },
+        { entity_ref: 'E2', next_stitch_at: expect.any(String) },
+        { entity_ref: 'E7', next_stitch_at: expect.any(String) },
+        { entity_ref: 'E8', next_stitch_at: null },
+        { entity_ref: 'E9', next_stitch_at: null },
       ]);
     },
   );

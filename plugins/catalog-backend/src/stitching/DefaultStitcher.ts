@@ -21,7 +21,7 @@ import {
   ANNOTATION_VIEW_URL,
   EntityRelation,
 } from '@backstage/catalog-model';
-import { SerializedError, stringifyError } from '@backstage/errors';
+import { SerializedError } from '@backstage/errors';
 import { Knex } from 'knex';
 import { v4 as uuid } from 'uuid';
 import { Logger } from 'winston';
@@ -32,6 +32,8 @@ import {
 } from '../database/tables';
 import { buildEntitySearch } from './buildEntitySearch';
 import { BATCH_SIZE, generateStableHash } from './util';
+import { Stitcher } from './types';
+import { markForStitching } from '../database/operations/stitcher/markForStitching';
 
 // See https://github.com/facebook/react/blob/f0cf832e1d0c8544c36aa8b310960885a11a847c/packages/react-dom-bindings/src/shared/sanitizeURL.js
 const scriptProtocolPattern =
@@ -43,25 +45,30 @@ const scriptProtocolPattern =
  * ingestion process, and stitching them together into the final entity JSON
  * shape.
  */
-export class Stitcher {
+export class DefaultStitcher implements Stitcher {
   constructor(
     private readonly database: Knex,
     private readonly logger: Logger,
   ) {}
 
-  async stitch(entityRefs: Set<string>) {
-    for (const entityRef of entityRefs) {
-      try {
-        await this.stitchOne(entityRef);
-      } catch (error) {
-        this.logger.error(
-          `Failed to stitch ${entityRef}, ${stringifyError(error)}`,
-        );
-      }
-    }
+  async markForStitching(options: {
+    entityRefs?: Iterable<string>;
+    entityIds?: Iterable<string>;
+  }) {
+    return await markForStitching({
+      knex: this.database,
+      entityRefs: options.entityRefs,
+      entityIds: options.entityIds,
+    });
   }
 
-  private async stitchOne(entityRef: string): Promise<void> {
+  async stitchOne(options: {
+    entityRef: string;
+    stitchTicket?: string;
+  }): Promise<void> {
+    const entityRef = options.entityRef;
+    const stitchTicket = options.stitchTicket ?? uuid();
+
     const entityResult = await this.database<DbRefreshStateRow>('refresh_state')
       .where({ entity_ref: entityRef })
       .limit(1)
@@ -72,12 +79,11 @@ export class Stitcher {
     }
 
     // Insert stitching ticket that will be compared before inserting the final entity.
-    const ticket = uuid();
     await this.database<DbFinalEntitiesRow>('final_entities')
       .insert({
         entity_id: entityResult[0].entity_id,
         hash: '',
-        stitch_ticket: ticket,
+        stitch_ticket: stitchTicket,
       })
       .onConflict('entity_id')
       .merge(['stitch_ticket']);
@@ -215,6 +221,13 @@ export class Stitcher {
     // to write the search index.
     const searchEntries = buildEntitySearch(entityId, entity);
 
+    // Only complete the stitch "request" if nobody else issued a new one since
+    // we started
+    await this.database<DbRefreshStateRow>('refresh_state')
+      .update({ next_stitch_at: null, next_stitch_ticket: null })
+      .where('entity_ref', '=', entityRef)
+      .andWhere('next_stitch_ticket', '=', stitchTicket);
+
     const amountOfRowsChanged = await this.database<DbFinalEntitiesRow>(
       'final_entities',
     )
@@ -224,13 +237,13 @@ export class Stitcher {
         last_updated_at: this.database.fn.now(),
       })
       .where('entity_id', entityId)
-      .where('stitch_ticket', ticket)
+      .where('stitch_ticket', stitchTicket)
       .onConflict('entity_id')
       .merge(['final_entity', 'hash', 'last_updated_at']);
 
     if (amountOfRowsChanged === 0) {
       this.logger.debug(
-        `Entity ${entityRef} is already processed, skipping write.`,
+        `Entity ${entityRef} is already stitched, skipping write.`,
       );
       return;
     }

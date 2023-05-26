@@ -260,6 +260,14 @@ describe('migrations', () => {
           },
         ])
         .into('refresh_state');
+      await knex
+        .insert({
+          entity_id: 'my-id',
+          hash: 'd1c0c56d5fea4238e4c091d9dde4cb42d05a6b7e',
+          stitch_ticket: '',
+          final_entity: '{}',
+        })
+        .into('final_entities');
 
       await migrateUpOnce(knex);
 
@@ -276,6 +284,7 @@ describe('migrations', () => {
           result_hash: null,
           next_update_at: expect.anything(),
           next_stitch_at: null,
+          next_stitch_ticket: null,
           last_discovery_at: expect.anything(),
         },
       ]);

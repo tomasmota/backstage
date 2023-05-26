@@ -31,9 +31,9 @@ import {
 import { ProcessingDatabase } from '../database/types';
 import { DefaultCatalogProcessingEngine } from '../processing/DefaultCatalogProcessingEngine';
 import { EntityProcessingRequest } from '../processing/types';
-import { Stitcher } from '../stitching/Stitcher';
 import { DefaultRefreshService } from './DefaultRefreshService';
 import { ConfigReader } from '@backstage/config';
+import { DefaultStitcher } from '../stitching/DefaultStitcher';
 
 jest.setTimeout(60_000);
 
@@ -54,6 +54,7 @@ describe('DefaultRefreshService', () => {
       processingDb: new DefaultProcessingDatabase({
         database: knex,
         logger,
+        stitcher: undefined as any,
         refreshInterval: () => 100,
       }),
       catalogDb: new DefaultCatalogDatabase({
@@ -109,10 +110,12 @@ describe('DefaultRefreshService', () => {
       }
     }
 
+    const stitcher = new DefaultStitcher(knex, defaultLogger);
     const engine = new DefaultCatalogProcessingEngine({
       config: new ConfigReader({}),
       logger: defaultLogger,
       processingDatabase: db,
+      stitcher: stitcher,
       orchestrator: {
         async process(request: EntityProcessingRequest) {
           const entityRef = stringifyEntityRef(request.entity);
@@ -151,7 +154,6 @@ describe('DefaultRefreshService', () => {
           };
         },
       },
-      stitcher: new Stitcher(knex, defaultLogger),
       createHash: () => createHash('sha1'),
       pollingIntervalMs: 50,
     });
