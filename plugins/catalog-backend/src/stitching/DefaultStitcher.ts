@@ -65,7 +65,7 @@ export class DefaultStitcher implements Stitcher {
   async stitchOne(options: {
     entityRef: string;
     stitchTicket?: string;
-  }): Promise<void> {
+  }): Promise<'changed' | 'unchanged' | 'abandoned'> {
     const entityRef = options.entityRef;
     const stitchTicket = options.stitchTicket ?? uuid();
 
@@ -75,7 +75,7 @@ export class DefaultStitcher implements Stitcher {
       .select('entity_id');
     if (!entityResult.length) {
       // Entity does no exist in refresh state table, no stitching required.
-      return;
+      return 'abandoned';
     }
 
     // Insert stitching ticket that will be compared before inserting the final entity.
@@ -129,10 +129,10 @@ export class DefaultStitcher implements Stitcher {
     // if we emit a relation to something that hasn't been ingested yet.
     // It's safe to ignore this stitch attempt in that case.
     if (!processedResult.length) {
-      this.logger.error(
+      this.logger.debug(
         `Unable to stitch ${entityRef}, item does not exist in refresh state table`,
       );
-      return;
+      return 'abandoned';
     }
 
     const {
@@ -151,7 +151,7 @@ export class DefaultStitcher implements Stitcher {
       this.logger.debug(
         `Unable to stitch ${entityRef}, the entity has not yet been processed`,
       );
-      return;
+      return 'abandoned';
     }
 
     // Grab the processed entity and stitch all of the relevant data into
@@ -206,7 +206,7 @@ export class DefaultStitcher implements Stitcher {
     const hash = generateStableHash(entity);
     if (hash === previousHash) {
       this.logger.debug(`Skipped stitching of ${entityRef}, no changes`);
-      return;
+      return 'unchanged';
     }
 
     entity.metadata.uid = entityId;
@@ -245,7 +245,7 @@ export class DefaultStitcher implements Stitcher {
       this.logger.debug(
         `Entity ${entityRef} is already stitched, skipping write.`,
       );
-      return;
+      return 'abandoned';
     }
 
     // TODO(freben): Search will probably need a similar safeguard against
@@ -259,5 +259,7 @@ export class DefaultStitcher implements Stitcher {
       .where({ entity_id: entityId })
       .delete();
     await this.database.batchInsert('search', searchEntries, BATCH_SIZE);
+
+    return 'changed';
   }
 }

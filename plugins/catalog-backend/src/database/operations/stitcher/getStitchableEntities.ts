@@ -16,8 +16,10 @@
 
 import { HumanDuration } from '@backstage/types';
 import { Knex } from 'knex';
-import { DbRefreshStateRow } from '../../tables';
+import { DateTime } from 'luxon';
 import { durationToMs } from '../../../util/durationToMs';
+import { timestampToDateTime } from '../../conversion';
+import { DbRefreshStateRow } from '../../tables';
 
 // TODO(freben): There is no retry counter or similar. If items start
 // perpetually crashing during stitching, they'll just get silently retried over
@@ -44,12 +46,14 @@ export async function getStitchableEntities(options: {
   Array<{
     entityRef: string;
     stitchTicket: string;
+    stitchAt: DateTime; // the time BEFORE moving it forward by the timeout
   }>
 > {
   const { knex, batchSize, stitchTimeout } = options;
 
   let itemsQuery = knex<DbRefreshStateRow>('refresh_state').select(
     'entity_ref',
+    'next_stitch_at',
     'next_stitch_ticket',
   );
 
@@ -85,6 +89,7 @@ export async function getStitchableEntities(options: {
   return items.map(i => ({
     entityRef: i.entity_ref,
     stitchTicket: i.next_stitch_ticket!,
+    stitchAt: timestampToDateTime(i.next_stitch_at!),
   }));
 }
 

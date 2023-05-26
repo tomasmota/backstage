@@ -303,7 +303,7 @@ export class DefaultCatalogProcessingEngine {
             entityRefs: setOfThingsToStitch,
           });
 
-          track.markSuccessfulWithChanges(setOfThingsToStitch.size);
+          track.markSuccessfulWithChanges();
         } catch (error) {
           assertError(error);
           track.markFailed(error);
@@ -358,10 +358,6 @@ export class DefaultCatalogProcessingEngine {
 // Helps wrap the timing and logging behaviors
 function progressTracker() {
   // prom-client metrics are deprecated in favour of OpenTelemetry metrics.
-  const promStitchedEntities = createCounterMetric({
-    name: 'catalog_stitched_entities_count',
-    help: 'Amount of entities stitched. DEPRECATED, use OpenTelemetry metrics instead',
-  });
   const promProcessedEntities = createCounterMetric({
     name: 'catalog_processed_entities_count',
     help: 'Amount of entities processed, DEPRECATED, use OpenTelemetry metrics instead',
@@ -383,11 +379,6 @@ function progressTracker() {
   });
 
   const meter = metrics.getMeter('default');
-  const stitchedEntities = meter.createCounter(
-    'catalog.stitched.entities.count',
-    { description: 'Amount of entities stitched' },
-  );
-
   const processedEntities = meter.createCounter(
     'catalog.processed.entities.count',
     { description: 'Amount of entities processed' },
@@ -459,13 +450,11 @@ function progressTracker() {
       processedEntities.add(1, { result: 'errors' });
     }
 
-    function markSuccessfulWithChanges(stitchedCount: number) {
+    function markSuccessfulWithChanges() {
       endOverallTimer({ result: 'changed' });
-      promStitchedEntities.inc(stitchedCount);
       promProcessedEntities.inc({ result: 'changed' }, 1);
 
       processingDuration.record(endTime(), { result: 'changed' });
-      stitchedEntities.add(stitchedCount);
       processedEntities.add(1, { result: 'changed' });
     }
 

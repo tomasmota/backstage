@@ -28,5 +28,5 @@ export interface Stitcher {
   stitchOne(options: {
     entityRef: string;
     stitchTicket?: string;
-  }): Promise<void>;
+  }): Promise<'changed' | 'unchanged' | 'abandoned'>;
 }
