@@ -178,15 +178,15 @@ describe('deleteOrphanedEntities', () => {
       await expect(run(knex)).resolves.toEqual(5);
       await expect(refreshState(knex)).resolves.toEqual([
         { entity_ref: 'E1', next_stitch_at: null },
-        { entity_ref: 'E2', next_stitch_at: expect.any(String) },
-        { entity_ref: 'E7', next_stitch_at: expect.any(String) },
+        { entity_ref: 'E2', next_stitch_at: expect.anything() },
+        { entity_ref: 'E7', next_stitch_at: expect.anything() },
         { entity_ref: 'E8', next_stitch_at: null },
         { entity_ref: 'E9', next_stitch_at: null },
       ]);
       await expect(finalEntities(knex)).resolves.toEqual([
         { entity_ref: 'E1', next_stitch_at: null },
-        { entity_ref: 'E2', next_stitch_at: expect.any(String) },
-        { entity_ref: 'E7', next_stitch_at: expect.any(String) },
+        { entity_ref: 'E2', next_stitch_at: expect.anything() },
+        { entity_ref: 'E7', next_stitch_at: expect.anything() },
         { entity_ref: 'E8', next_stitch_at: null },
         { entity_ref: 'E9', next_stitch_at: null },
       ]);

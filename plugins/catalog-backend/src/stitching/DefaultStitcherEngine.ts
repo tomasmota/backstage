@@ -32,22 +32,22 @@ interface StitchableItem {
  * Drives the loop that runs deferred stitching of entities.
  */
 export class DefaultStitcherEngine implements StitcherEngine {
+  private readonly knex: Knex;
   private readonly stitcher: Stitcher;
-  private readonly database: Knex;
   private readonly logger: Logger;
   private readonly pollingInterval: HumanDuration;
   private readonly stitchTimeout: HumanDuration;
   private stopFunc?: () => void;
 
   constructor(options: {
+    knex: Knex;
     stitcher: Stitcher;
-    database: Knex;
     logger: Logger;
     pollingInterval?: HumanDuration;
     stitchTimeout?: HumanDuration;
   }) {
     this.stitcher = options.stitcher;
-    this.database = options.database;
+    this.knex = options.knex;
     this.logger = options.logger;
     this.pollingInterval = options.pollingInterval ?? { seconds: 1 };
     this.stitchTimeout = options.stitchTimeout ?? { seconds: 60 };
@@ -80,7 +80,7 @@ export class DefaultStitcherEngine implements StitcherEngine {
       loadTasks: async count => {
         try {
           return await getStitchableEntities({
-            knex: this.database,
+            knex: this.knex,
             batchSize: count,
             stitchTimeout: this.stitchTimeout,
           });

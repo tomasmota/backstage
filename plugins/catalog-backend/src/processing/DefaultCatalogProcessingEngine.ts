@@ -26,11 +26,7 @@ import { Logger } from 'winston';
 import { metrics } from '@opentelemetry/api';
 import { ProcessingDatabase, RefreshStateItem } from '../database/types';
 import { createCounterMetric, createSummaryMetric } from '../util/metrics';
-import {
-  CatalogProcessingEngine,
-  CatalogProcessingOrchestrator,
-  EntityProcessingResult,
-} from './types';
+import { CatalogProcessingOrchestrator, EntityProcessingResult } from './types';
 import { Stitcher } from '../stitching/types';
 import { startTaskPipeline } from './TaskPipeline';
 import { PluginTaskScheduler } from '@backstage/backend-tasks';
@@ -40,7 +36,13 @@ const CACHE_TTL = 5;
 
 export type ProgressTracker = ReturnType<typeof progressTracker>;
 
-export class DefaultCatalogProcessingEngine implements CatalogProcessingEngine {
+// NOTE(freben): Perhaps surprisingly, this class does not implement the
+// CatalogProcessingEngine type. That type is externally visible and its name is
+// the way it is for historic reasons. This class has no particular reason to
+// implement that precise interface; nowadays there are several different
+// engines "hiding" behind the CatalogProcessingEngine interface, of which this
+// is just one.
+export class DefaultCatalogProcessingEngine {
   private readonly config: Config;
   private readonly scheduler?: PluginTaskScheduler;
   private readonly logger: Logger;

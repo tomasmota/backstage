@@ -35,7 +35,6 @@ import { durationToMs } from '../../../util/durationToMs';
  * the given timeout duration. This has the effect that they will be picked up
  * for stitching again in the future, if it hasn't completed by that point for
  * some reason (restarts, crashes, etc).
- *
  */
 export async function getStitchableEntities(options: {
   knex: Knex | Knex.Transaction;
@@ -63,7 +62,8 @@ export async function getStitchableEntities(options: {
 
   const items = await itemsQuery
     .whereNotNull('refresh_state.next_stitch_at')
-    .andWhere('refresh_state.next_stitch_at', '<=', knex.fn.now())
+    .where('refresh_state.next_stitch_at', '<=', knex.fn.now())
+    .whereNotNull('next_stitch_ticket')
     .orderBy('next_stitch_at', 'asc')
     .limit(batchSize);
 
@@ -76,6 +76,8 @@ export async function getStitchableEntities(options: {
       'entity_ref',
       items.map(i => i.entity_ref),
     )
+    // avoid race condition where someone completes a stitch right between these statements
+    .whereNotNull('next_stitch_ticket')
     .update({
       next_stitch_at: nowPlus(knex, stitchTimeout),
     });

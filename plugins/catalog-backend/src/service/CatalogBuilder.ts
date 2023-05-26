@@ -451,13 +451,12 @@ export class CatalogBuilder {
 
     const stitcher = new DefaultStitcher(dbClient, logger);
     const stitcherEngine = new DefaultStitcherEngine({
+      knex: dbClient,
       stitcher,
-      database: dbClient,
       logger,
     });
 
     const processingDatabase = new DefaultProcessingDatabase({
-      stitcher,
       database: dbClient,
       logger,
       refreshInterval: this.processingInterval,
