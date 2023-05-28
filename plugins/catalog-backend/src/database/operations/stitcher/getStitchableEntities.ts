@@ -65,9 +65,9 @@ export async function getStitchableEntities(options: {
   }
 
   const items = await itemsQuery
-    .whereNotNull('refresh_state.next_stitch_at')
-    .where('refresh_state.next_stitch_at', '<=', knex.fn.now())
+    .whereNotNull('next_stitch_at')
     .whereNotNull('next_stitch_ticket')
+    .where('next_stitch_at', '<=', knex.fn.now())
     .orderBy('next_stitch_at', 'asc')
     .limit(batchSize);
 

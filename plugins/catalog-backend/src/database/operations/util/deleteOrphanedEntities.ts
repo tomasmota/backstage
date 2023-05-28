@@ -78,6 +78,7 @@ export async function deleteOrphanedEntities(options: {
       .delete()
       .whereIn('entity_id', orphanIds);
 
+    // Mark all of the things that the orphans had relations to for stitching
     await markForStitching({
       knex: tx,
       entityIds: orphanRelationIds,

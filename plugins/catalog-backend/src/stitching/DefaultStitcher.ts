@@ -15,25 +15,26 @@
  */
 
 import { ENTITY_STATUS_CATALOG_PROCESSING_TYPE } from '@backstage/catalog-client';
-import { AlphaEntity, EntityStatusItem } from '@backstage/catalog-model/alpha';
 import {
   ANNOTATION_EDIT_URL,
   ANNOTATION_VIEW_URL,
   EntityRelation,
 } from '@backstage/catalog-model';
+import { AlphaEntity, EntityStatusItem } from '@backstage/catalog-model/alpha';
 import { SerializedError } from '@backstage/errors';
 import { Knex } from 'knex';
 import { v4 as uuid } from 'uuid';
 import { Logger } from 'winston';
+import { markForStitching } from '../database/operations/stitcher/markForStitching';
+import { markStitchCompleted } from '../database/operations/stitcher/markStitchCompleted';
 import {
   DbFinalEntitiesRow,
   DbRefreshStateRow,
   DbSearchRow,
 } from '../database/tables';
 import { buildEntitySearch } from './buildEntitySearch';
-import { BATCH_SIZE, generateStableHash } from './util';
 import { Stitcher } from './types';
-import { markForStitching } from '../database/operations/stitcher/markForStitching';
+import { BATCH_SIZE, generateStableHash } from './util';
 
 // See https://github.com/facebook/react/blob/f0cf832e1d0c8544c36aa8b310960885a11a847c/packages/react-dom-bindings/src/shared/sanitizeURL.js
 const scriptProtocolPattern =
@@ -221,13 +222,6 @@ export class DefaultStitcher implements Stitcher {
     // to write the search index.
     const searchEntries = buildEntitySearch(entityId, entity);
 
-    // Only complete the stitch "request" if nobody else issued a new one since
-    // we started
-    await this.database<DbRefreshStateRow>('refresh_state')
-      .update({ next_stitch_at: null, next_stitch_ticket: null })
-      .where('entity_ref', '=', entityRef)
-      .andWhere('next_stitch_ticket', '=', stitchTicket);
-
     const amountOfRowsChanged = await this.database<DbFinalEntitiesRow>(
       'final_entities',
     )
@@ -240,6 +234,13 @@ export class DefaultStitcher implements Stitcher {
       .where('stitch_ticket', stitchTicket)
       .onConflict('entity_id')
       .merge(['final_entity', 'hash', 'last_updated_at']);
+
+    // This ensures that the entry is "dequeued".
+    await markStitchCompleted({
+      knex: this.database,
+      entityRef,
+      stitchTicket,
+    });
 
     if (amountOfRowsChanged === 0) {
       this.logger.debug(
