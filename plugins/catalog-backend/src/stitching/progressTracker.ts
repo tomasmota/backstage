@@ -15,100 +15,15 @@
  */
 
 import { stringifyError } from '@backstage/errors';
-import { HumanDuration } from '@backstage/types';
 import { metrics } from '@opentelemetry/api';
 import { Knex } from 'knex';
 import { DateTime } from 'luxon';
 import { Logger } from 'winston';
-import { getStitchableEntities } from '../database/operations/stitcher/getStitchableEntities';
 import { DbRefreshStateRow } from '../database/tables';
-import { startTaskPipeline } from '../processing/TaskPipeline';
-import { durationToMs } from '../util/durationToMs';
 import { createCounterMetric } from '../util/metrics';
-import { Stitcher, StitcherEngine } from './types';
-
-type StitchableItem = Awaited<ReturnType<typeof getStitchableEntities>>[0];
-
-export type StitchProgressTracker = ReturnType<typeof progressTracker>;
-
-/**
- * Drives the loop that runs deferred stitching of entities.
- */
-export class DefaultStitcherEngine implements StitcherEngine {
-  private readonly knex: Knex;
-  private readonly stitcher: Stitcher;
-  private readonly logger: Logger;
-  private readonly pollingInterval: HumanDuration;
-  private readonly stitchTimeout: HumanDuration;
-  private readonly tracker: StitchProgressTracker;
-  private stopFunc?: () => void;
-
-  constructor(options: {
-    knex: Knex;
-    stitcher: Stitcher;
-    logger: Logger;
-    pollingInterval?: HumanDuration;
-    stitchTimeout?: HumanDuration;
-  }) {
-    this.stitcher = options.stitcher;
-    this.knex = options.knex;
-    this.logger = options.logger;
-    this.pollingInterval = options.pollingInterval ?? { seconds: 1 };
-    this.stitchTimeout = options.stitchTimeout ?? { seconds: 60 };
-    this.tracker = progressTracker(options.knex, options.logger);
-  }
-
-  async start() {
-    if (this.stopFunc) {
-      throw new Error('Processing engine is already started');
-    }
-
-    const stopPipeline = this.startPipeline();
-
-    this.stopFunc = () => {
-      stopPipeline();
-    };
-  }
-
-  async stop() {
-    if (this.stopFunc) {
-      this.stopFunc();
-      this.stopFunc = undefined;
-    }
-  }
-
-  private startPipeline(): () => void {
-    return startTaskPipeline<StitchableItem>({
-      lowWatermark: 2,
-      highWatermark: 5,
-      pollingIntervalMs: durationToMs(this.pollingInterval),
-      loadTasks: async count => {
-        try {
-          return await getStitchableEntities({
-            knex: this.knex,
-            batchSize: count,
-            stitchTimeout: this.stitchTimeout,
-          });
-        } catch (error) {
-          this.logger.warn('Failed to load stitching items', error);
-          return [];
-        }
-      },
-      processTask: async item => {
-        const track = this.tracker.stitchStart(item);
-        try {
-          const result = await this.stitcher.stitchOne(item);
-          track.markComplete(result);
-        } catch (error) {
-          track.markFailed(error);
-        }
-      },
-    });
-  }
-}
 
 // Helps wrap the timing and logging behaviors
-function progressTracker(knex: Knex, logger: Logger) {
+export function progressTracker(knex: Knex, logger: Logger) {
   // prom-client metrics are deprecated in favour of OpenTelemetry metrics.
   const promStitchedEntities = createCounterMetric({
     name: 'catalog_stitched_entities_count',
@@ -152,11 +67,18 @@ function progressTracker(knex: Knex, logger: Logger) {
     },
   );
 
-  function stitchStart(item: { entityRef: string; stitchAt: DateTime }) {
+  function stitchStart(item: {
+    entityRef: string;
+    stitchRequestedAt?: DateTime;
+  }) {
     logger.debug(`Stitching ${item.entityRef}`);
 
     const startTime = process.hrtime();
-    stitchingQueueDelay.record(-item.stitchAt.diffNow().as('seconds'));
+    if (item.stitchRequestedAt) {
+      stitchingQueueDelay.record(
+        -item.stitchRequestedAt.diffNow().as('seconds'),
+      );
+    }
 
     function endTime() {
       const delta = process.hrtime(startTime);

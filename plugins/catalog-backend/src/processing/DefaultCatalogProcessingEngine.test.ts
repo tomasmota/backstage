@@ -37,7 +37,7 @@ describe('DefaultCatalogProcessingEngine', () => {
     process: jest.fn(),
   };
   const stitcher = {
-    markForStitching: jest.fn(),
+    stitch: jest.fn(),
   } as unknown as jest.Mocked<Stitcher>;
   const hash = {
     update: () => hash,
@@ -448,12 +448,12 @@ describe('DefaultCatalogProcessingEngine', () => {
 
     await engine.start();
     await waitForExpect(() => {
-      expect(stitcher.markForStitching).toHaveBeenCalledTimes(2);
+      expect(stitcher.stitch).toHaveBeenCalledTimes(2);
     });
-    expect([...stitcher.markForStitching.mock.calls[0][0].entityRefs!]).toEqual(
+    expect([...stitcher.stitch.mock.calls[0][0].entityRefs!]).toEqual(
       expect.arrayContaining(['k:ns/me', 'k:ns/other1', 'k:ns/other2']),
     );
-    expect([...stitcher.markForStitching.mock.calls[1][0].entityRefs!]).toEqual(
+    expect([...stitcher.stitch.mock.calls[1][0].entityRefs!]).toEqual(
       expect.arrayContaining(['k:ns/me', 'k:ns/other1', 'k:ns/other3']),
     );
     await engine.stop();
@@ -533,9 +533,9 @@ describe('DefaultCatalogProcessingEngine', () => {
 
     await engine.start();
     await waitForExpect(() => {
-      expect(stitcher.markForStitching).toHaveBeenCalledTimes(1);
+      expect(stitcher.stitch).toHaveBeenCalledTimes(1);
     });
-    expect([...stitcher.markForStitching.mock.calls[0][0].entityRefs!]).toEqual(
+    expect([...stitcher.stitch.mock.calls[0][0].entityRefs!]).toEqual(
       expect.arrayContaining(['k:ns/me']),
     );
     await engine.stop();
@@ -620,9 +620,9 @@ describe('DefaultCatalogProcessingEngine', () => {
 
     await engine.start();
     await waitForExpect(() => {
-      expect(stitcher.markForStitching).toHaveBeenCalledTimes(1);
+      expect(stitcher.stitch).toHaveBeenCalledTimes(1);
     });
-    expect([...stitcher.markForStitching.mock.calls[0][0].entityRefs!]).toEqual(
+    expect([...stitcher.stitch.mock.calls[0][0].entityRefs!]).toEqual(
       expect.arrayContaining(['k:ns/me', 'k:ns/other2']),
     );
     await engine.stop();
@@ -697,9 +697,9 @@ describe('DefaultCatalogProcessingEngine', () => {
 
     await engine.start();
     await waitForExpect(() => {
-      expect(stitcher.markForStitching).toHaveBeenCalledTimes(1);
+      expect(stitcher.stitch).toHaveBeenCalledTimes(1);
     });
-    expect([...stitcher.markForStitching.mock.calls[0][0].entityRefs!]).toEqual(
+    expect([...stitcher.stitch.mock.calls[0][0].entityRefs!]).toEqual(
       expect.arrayContaining(['k:ns/me', 'k:ns/other2']),
     );
     await engine.stop();

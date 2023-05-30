@@ -94,7 +94,7 @@ describe('getStitchableEntities', () => {
         {
           entityRef: 'k:ns/past_stitch_time',
           stitchTicket: 't3',
-          stitchAt: expect.anything(),
+          stitchRequestedAt: expect.anything(),
         },
       ]);
 

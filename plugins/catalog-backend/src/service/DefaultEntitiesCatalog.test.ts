@@ -31,9 +31,9 @@ import {
   DbSearchRow,
 } from '../database/tables';
 import { Stitcher } from '../stitching/types';
-import { buildEntitySearch } from '../stitching/buildEntitySearch';
 import { DefaultEntitiesCatalog } from './DefaultEntitiesCatalog';
 import { EntitiesRequest } from '../catalog/types';
+import { buildEntitySearch } from '../database/operations/stitcher/buildEntitySearch';
 
 jest.setTimeout(60_000);
 
@@ -47,8 +47,8 @@ describe('DefaultEntitiesCatalog', () => {
   const databases = TestDatabases.create({
     ids: ['MYSQL_8', 'POSTGRES_13', 'POSTGRES_9', 'SQLITE_3'],
   });
-  const markForStitching = jest.fn();
-  const stitcher: Stitcher = { markForStitching } as any;
+  const stitch = jest.fn();
+  const stitcher: Stitcher = { stitch } as any;
 
   async function createDatabase(databaseId: TestDatabaseId) {
     knex = await databases.init(databaseId);
@@ -1684,7 +1684,7 @@ describe('DefaultEntitiesCatalog', () => {
           { entity_ref: 'k:default/unrelated1', result_hash: 'not-changed' },
           { entity_ref: 'k:default/unrelated2', result_hash: 'not-changed' },
         ]);
-        expect(markForStitching).toHaveBeenCalledWith({
+        expect(stitch).toHaveBeenCalledWith({
           entityRefs: new Set(['k:default/unrelated1', 'k:default/unrelated2']),
         });
       },

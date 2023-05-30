@@ -248,7 +248,7 @@ export class DefaultCatalogProcessingEngine {
               });
             });
 
-            await this.stitcher.markForStitching({
+            await this.stitcher.stitch({
               entityRefs: [stringifyEntityRef(unprocessedEntity)],
             });
 
@@ -299,7 +299,7 @@ export class DefaultCatalogProcessingEngine {
             }
           });
 
-          await this.stitcher.markForStitching({
+          await this.stitcher.stitch({
             entityRefs: setOfThingsToStitch,
           });
 

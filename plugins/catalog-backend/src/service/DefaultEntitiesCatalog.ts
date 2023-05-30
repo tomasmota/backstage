@@ -605,7 +605,7 @@ export class DefaultEntitiesCatalog implements EntitiesCatalog {
       .where('entity_id', uid)
       .delete();
 
-    await this.stitcher.markForStitching({
+    await this.stitcher.stitch({
       entityRefs: new Set(relationPeers.map(p => p.ref)),
     });
   }

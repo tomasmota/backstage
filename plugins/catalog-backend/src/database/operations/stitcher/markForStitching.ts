@@ -19,8 +19,6 @@ import splitToChunks from 'lodash/chunk';
 import { Knex } from 'knex';
 import { DbRefreshStateRow } from '../../tables';
 
-const BATCH_SIZE = 100;
-
 /**
  * Marks a number of entities for deferred stitching some time in the near
  * future.
@@ -37,9 +35,10 @@ export async function markForStitching(options: {
   const ticket = uuid();
 
   if (entityRefs) {
+    // Splitting to chunks just to cover pathological cases that upset the db
     const chunks = splitToChunks(
       Array.isArray(entityRefs) ? entityRefs : [...entityRefs],
-      BATCH_SIZE,
+      100,
     );
 
     for (const chunk of chunks) {
@@ -55,7 +54,7 @@ export async function markForStitching(options: {
   if (entityIds) {
     const chunks = splitToChunks(
       Array.isArray(entityIds) ? entityIds : [...entityIds],
-      BATCH_SIZE,
+      100,
     );
 
     for (const chunk of chunks) {

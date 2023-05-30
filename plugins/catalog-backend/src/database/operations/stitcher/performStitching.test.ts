@@ -17,19 +17,19 @@
 import { getVoidLogger } from '@backstage/backend-common';
 import { TestDatabases } from '@backstage/backend-test-utils';
 import { Entity } from '@backstage/catalog-model';
-import { applyDatabaseMigrations } from '../database/migrations';
+import { applyDatabaseMigrations } from '../../migrations';
 import {
   DbFinalEntitiesRow,
   DbRefreshStateReferencesRow,
   DbRefreshStateRow,
   DbRelationsRow,
   DbSearchRow,
-} from '../database/tables';
-import { DefaultStitcher } from './DefaultStitcher';
+} from '../../tables';
+import { performStitching } from './performStitching';
 
 jest.setTimeout(60_000);
 
-describe('Stitcher', () => {
+describe('performStitching', () => {
   const databases = TestDatabases.create({
     ids: ['MYSQL_8', 'POSTGRES_13', 'POSTGRES_9', 'SQLITE_3'],
   });
@@ -38,18 +38,13 @@ describe('Stitcher', () => {
   it.each(databases.eachSupportedId())(
     'runs the happy path for %p',
     async databaseId => {
-      const db = await databases.init(databaseId);
-      await applyDatabaseMigrations(db);
+      const knex = await databases.init(databaseId);
+      await applyDatabaseMigrations(knex);
 
-      const stitcher = new DefaultStitcher({
-        knex: db,
-        logger,
-        strategy: { mode: 'immediate' },
-      });
       let entities: DbFinalEntitiesRow[];
       let entity: Entity;
 
-      await db<DbRefreshStateRow>('refresh_state').insert([
+      await knex<DbRefreshStateRow>('refresh_state').insert([
         {
           entity_id: 'my-id',
           entity_ref: 'k:ns/n',
@@ -66,14 +61,14 @@ describe('Stitcher', () => {
             },
           }),
           errors: '[]',
-          next_update_at: db.fn.now(),
-          last_discovery_at: db.fn.now(),
+          next_update_at: knex.fn.now(),
+          last_discovery_at: knex.fn.now(),
         },
       ]);
-      await db<DbRefreshStateReferencesRow>('refresh_state_references').insert([
-        { source_key: 'a', target_entity_ref: 'k:ns/n' },
-      ]);
-      await db<DbRelationsRow>('relations').insert([
+      await knex<DbRefreshStateReferencesRow>(
+        'refresh_state_references',
+      ).insert([{ source_key: 'a', target_entity_ref: 'k:ns/n' }]);
+      await knex<DbRelationsRow>('relations').insert([
         {
           originating_entity_id: 'my-id',
           source_entity_ref: 'k:ns/n',
@@ -89,9 +84,9 @@ describe('Stitcher', () => {
         },
       ]);
 
-      await stitcher.stitch({ entityRefs: ['k:ns/n'] });
+      await performStitching({ knex, logger, entityRef: 'k:ns/n' });
 
-      entities = await db<DbFinalEntitiesRow>('final_entities');
+      entities = await knex<DbFinalEntitiesRow>('final_entities');
 
       expect(entities.length).toBe(1);
       entity = JSON.parse(entities[0].final_entity!);
@@ -120,7 +115,7 @@ describe('Stitcher', () => {
       expect(last_updated_at).not.toBeNull();
       const firstHash = entities[0].hash;
 
-      const search = await db<DbSearchRow>('search');
+      const search = await knex<DbSearchRow>('search');
       expect(search).toEqual(
         expect.arrayContaining([
           {
@@ -169,16 +164,16 @@ describe('Stitcher', () => {
       );
 
       // Re-stitch without any changes
-      await stitcher.stitch({ entityRefs: ['k:ns/n'] });
+      await performStitching({ knex, logger, entityRef: 'k:ns/n' });
 
-      entities = await db<DbFinalEntitiesRow>('final_entities');
+      entities = await knex<DbFinalEntitiesRow>('final_entities');
       expect(entities.length).toBe(1);
       entity = JSON.parse(entities[0].final_entity!);
       expect(entities[0].hash).toEqual(firstHash);
       expect(entity.metadata.etag).toEqual(firstHash);
 
       // Now add one more relation and re-stitch
-      await db<DbRelationsRow>('relations').insert([
+      await knex<DbRelationsRow>('relations').insert([
         {
           originating_entity_id: 'my-id',
           source_entity_ref: 'k:ns/n',
@@ -187,9 +182,9 @@ describe('Stitcher', () => {
         },
       ]);
 
-      await stitcher.stitch({ entityRefs: ['k:ns/n'] });
+      await performStitching({ knex, logger, entityRef: 'k:ns/n' });
 
-      entities = await db<DbFinalEntitiesRow>('final_entities');
+      entities = await knex<DbFinalEntitiesRow>('final_entities');
 
       expect(entities.length).toBe(1);
       entity = JSON.parse(entities[0].final_entity!);
@@ -220,7 +215,7 @@ describe('Stitcher', () => {
       expect(entities[0].hash).not.toEqual(firstHash);
       expect(entities[0].hash).toEqual(entity.metadata.etag);
 
-      expect(await db<DbSearchRow>('search')).toEqual(
+      expect(await knex<DbSearchRow>('search')).toEqual(
         expect.arrayContaining([
           {
             entity_id: 'my-id',

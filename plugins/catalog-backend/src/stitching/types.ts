@@ -14,19 +14,14 @@
  * limitations under the License.
  */
 
-export interface StitcherEngine {
-  start(): Promise<void>;
-  stop(): Promise<void>;
-}
-
+/**
+ * Performs the act of stitching - to take all of the various outputs from the
+ * ingestion process, and stitching them together into the final entity JSON
+ * shape.
+ */
 export interface Stitcher {
-  markForStitching(options: {
+  stitch(options: {
     entityRefs?: Iterable<string>;
     entityIds?: Iterable<string>;
   }): Promise<void>;
-
-  stitchOne(options: {
-    entityRef: string;
-    stitchTicket?: string;
-  }): Promise<'changed' | 'unchanged' | 'abandoned'>;
 }

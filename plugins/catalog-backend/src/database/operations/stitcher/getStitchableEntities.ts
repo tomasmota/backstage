@@ -46,7 +46,7 @@ export async function getStitchableEntities(options: {
   Array<{
     entityRef: string;
     stitchTicket: string;
-    stitchAt: DateTime; // the time BEFORE moving it forward by the timeout
+    stitchRequestedAt: DateTime; // the time BEFORE moving it forward by the timeout
   }>
 > {
   const { knex, batchSize, stitchTimeout } = options;
@@ -89,7 +89,7 @@ export async function getStitchableEntities(options: {
   return items.map(i => ({
     entityRef: i.entity_ref,
     stitchTicket: i.next_stitch_ticket!,
-    stitchAt: timestampToDateTime(i.next_stitch_at!),
+    stitchRequestedAt: timestampToDateTime(i.next_stitch_at!),
   }));
 }
 
