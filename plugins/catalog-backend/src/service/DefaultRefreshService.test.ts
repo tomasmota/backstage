@@ -117,6 +117,7 @@ describe('DefaultRefreshService', () => {
       config: new ConfigReader({}),
       logger: defaultLogger,
       processingDatabase: db,
+      knex: knex,
       stitcher: stitcher,
       orchestrator: {
         async process(request: EntityProcessingRequest) {
