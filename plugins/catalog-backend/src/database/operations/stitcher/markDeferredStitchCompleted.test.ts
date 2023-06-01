@@ -16,12 +16,12 @@
 
 import { TestDatabases } from '@backstage/backend-test-utils';
 import { applyDatabaseMigrations } from '../../migrations';
-import { markStitchCompleted } from './markStitchCompleted';
+import { markDeferredStitchCompleted } from './markDeferredStitchCompleted';
 import { DbRefreshStateRow } from '../../tables';
 
 jest.setTimeout(60_000);
 
-describe('markStitchCompleted', () => {
+describe('markDeferredStitchCompleted', () => {
   const databases = TestDatabases.create({
     ids: ['MYSQL_8', 'POSTGRES_13', 'POSTGRES_9', 'SQLITE_3'],
   });
@@ -53,7 +53,7 @@ describe('markStitchCompleted', () => {
         );
       }
 
-      await markStitchCompleted({
+      await markDeferredStitchCompleted({
         knex,
         entityRef: 'k:ns/n',
         stitchTicket: 'the-wrong-ticket',
@@ -62,7 +62,7 @@ describe('markStitchCompleted', () => {
         { next_stitch_at: expect.anything(), next_stitch_ticket: 'the-ticket' },
       ]);
 
-      await markStitchCompleted({
+      await markDeferredStitchCompleted({
         knex,
         entityRef: 'k:ns/n',
         stitchTicket: 'the-ticket',

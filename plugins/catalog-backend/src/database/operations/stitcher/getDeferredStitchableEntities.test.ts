@@ -16,11 +16,11 @@
 
 import { TestDatabases } from '@backstage/backend-test-utils';
 import { applyDatabaseMigrations } from '../../migrations';
-import { getStitchableEntities } from './getStitchableEntities';
+import { getDeferredStitchableEntities } from './getDeferredStitchableEntities';
 
 jest.setTimeout(60_000);
 
-describe('getStitchableEntities', () => {
+describe('getDeferredStitchableEntities', () => {
   const databases = TestDatabases.create({
     ids: ['MYSQL_8', 'POSTGRES_13', 'POSTGRES_9', 'SQLITE_3'],
   });
@@ -82,7 +82,7 @@ describe('getStitchableEntities', () => {
 
       const rowsBefore = await knex('refresh_state');
 
-      const items = await getStitchableEntities({
+      const items = await getDeferredStitchableEntities({
         knex,
         batchSize: 1,
         stitchTimeout: { seconds: 2 },

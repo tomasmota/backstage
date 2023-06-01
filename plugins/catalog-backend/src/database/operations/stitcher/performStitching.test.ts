@@ -35,8 +35,9 @@ describe('performStitching', () => {
   });
   const logger = getVoidLogger();
 
+  // NOTE(freben): Testing the deferred path since it's a superset of the immediate one
   it.each(databases.eachSupportedId())(
-    'runs the happy path for %p',
+    'runs the happy path in deferred mode for %p',
     async databaseId => {
       const knex = await databases.init(databaseId);
       await applyDatabaseMigrations(knex);
@@ -84,7 +85,16 @@ describe('performStitching', () => {
         },
       ]);
 
-      await performStitching({ knex, logger, entityRef: 'k:ns/n' });
+      await performStitching({
+        knex,
+        logger,
+        strategy: {
+          mode: 'deferred',
+          pollingInterval: { seconds: 1 },
+          stitchTimeout: { seconds: 1 },
+        },
+        entityRef: 'k:ns/n',
+      });
 
       entities = await knex<DbFinalEntitiesRow>('final_entities');
 
@@ -164,7 +174,16 @@ describe('performStitching', () => {
       );
 
       // Re-stitch without any changes
-      await performStitching({ knex, logger, entityRef: 'k:ns/n' });
+      await performStitching({
+        knex,
+        logger,
+        strategy: {
+          mode: 'deferred',
+          pollingInterval: { seconds: 1 },
+          stitchTimeout: { seconds: 1 },
+        },
+        entityRef: 'k:ns/n',
+      });
 
       entities = await knex<DbFinalEntitiesRow>('final_entities');
       expect(entities.length).toBe(1);
@@ -182,7 +201,16 @@ describe('performStitching', () => {
         },
       ]);
 
-      await performStitching({ knex, logger, entityRef: 'k:ns/n' });
+      await performStitching({
+        knex,
+        logger,
+        strategy: {
+          mode: 'deferred',
+          pollingInterval: { seconds: 1 },
+          stitchTimeout: { seconds: 1 },
+        },
+        entityRef: 'k:ns/n',
+      });
 
       entities = await knex<DbFinalEntitiesRow>('final_entities');
 

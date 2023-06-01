@@ -17,31 +17,69 @@
 import { v4 as uuid } from 'uuid';
 import splitToChunks from 'lodash/chunk';
 import { Knex } from 'knex';
-import { DbRefreshStateRow } from '../../tables';
+import { DbFinalEntitiesRow, DbRefreshStateRow } from '../../tables';
+import { StitchingStrategy } from '../../../stitching/types';
 
 /**
  * Marks a number of entities for deferred stitching some time in the near
  * future.
+ *
+ * @remarks
  */
 export async function markForStitching(options: {
   knex: Knex | Knex.Transaction;
+  strategy: StitchingStrategy;
   entityRefs?: Iterable<string>;
   entityIds?: Iterable<string>;
 }): Promise<void> {
-  const { entityRefs, entityIds, knex } = options;
+  // Splitting to chunks just to cover pathological cases that upset the db
+  const entityRefs = split(options.entityRefs);
+  const entityIds = split(options.entityIds);
+  const knex = options.knex;
 
-  // It's OK that this is shared across refresh state rows; it just needs to
-  // be uniquely generated for every new stitch request.
-  const ticket = uuid();
+  if (options.strategy.mode === 'immediate') {
+    for (const chunk of entityRefs) {
+      await knex
+        .table<DbFinalEntitiesRow>('final_entities')
+        .update({
+          hash: 'force-stitching',
+        })
+        .whereIn(
+          'entity_id',
+          knex<DbRefreshStateRow>('refresh_state')
+            .select('entity_id')
+            .whereIn('entity_ref', chunk),
+        );
+      await knex
+        .table<DbRefreshStateRow>('refresh_state')
+        .update({
+          result_hash: 'force-stitching',
+          next_update_at: knex.fn.now(),
+        })
+        .whereIn('entity_ref', chunk);
+    }
 
-  if (entityRefs) {
-    // Splitting to chunks just to cover pathological cases that upset the db
-    const chunks = splitToChunks(
-      Array.isArray(entityRefs) ? entityRefs : [...entityRefs],
-      100,
-    );
+    for (const chunk of entityIds) {
+      await knex
+        .table<DbFinalEntitiesRow>('final_entities')
+        .update({
+          hash: 'force-stitching',
+        })
+        .whereIn('entity_id', chunk);
+      await knex
+        .table<DbRefreshStateRow>('refresh_state')
+        .update({
+          result_hash: 'force-stitching',
+          next_update_at: knex.fn.now(),
+        })
+        .whereIn('entity_id', chunk);
+    }
+  } else {
+    // It's OK that this is shared across refresh state rows; it just needs to
+    // be uniquely generated for every new stitch request.
+    const ticket = uuid();
 
-    for (const chunk of chunks) {
+    for (const chunk of entityRefs) {
       await knex<DbRefreshStateRow>('refresh_state')
         .update({
           next_stitch_at: knex.fn.now(),
@@ -49,15 +87,8 @@ export async function markForStitching(options: {
         })
         .whereIn('entity_ref', chunk);
     }
-  }
 
-  if (entityIds) {
-    const chunks = splitToChunks(
-      Array.isArray(entityIds) ? entityIds : [...entityIds],
-      100,
-    );
-
-    for (const chunk of chunks) {
+    for (const chunk of entityIds) {
       await knex<DbRefreshStateRow>('refresh_state')
         .update({
           next_stitch_at: knex.fn.now(),
@@ -66,4 +97,11 @@ export async function markForStitching(options: {
         .whereIn('entity_id', chunk);
     }
   }
+}
+
+function split(input: Iterable<string> | undefined): string[][] {
+  if (!input) {
+    return [];
+  }
+  return splitToChunks(Array.isArray(input) ? input : [...input], 200);
 }

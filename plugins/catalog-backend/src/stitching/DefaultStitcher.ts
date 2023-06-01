@@ -14,34 +14,30 @@
  * limitations under the License.
  */
 
+import { Config } from '@backstage/config';
 import { HumanDuration } from '@backstage/types';
 import { Knex } from 'knex';
+import splitToChunks from 'lodash/chunk';
+import { DateTime } from 'luxon';
 import { Logger } from 'winston';
-import { getStitchableEntities } from '../database/operations/stitcher/getStitchableEntities';
+import { getDeferredStitchableEntities } from '../database/operations/stitcher/getDeferredStitchableEntities';
 import { markForStitching } from '../database/operations/stitcher/markForStitching';
 import { performStitching } from '../database/operations/stitcher/performStitching';
+import { DbRefreshStateRow } from '../database/tables';
 import { startTaskPipeline } from '../processing/TaskPipeline';
 import { durationToMs } from '../util/durationToMs';
 import { progressTracker } from './progressTracker';
-import { Stitcher } from './types';
-import { Config } from '@backstage/config';
-import { DateTime } from 'luxon';
-import { DbRefreshStateRow } from '../database/tables';
-import splitToChunks from 'lodash/chunk';
+import {
+  Stitcher,
+  StitchingStrategy,
+  stitchingStrategyFromConfig,
+} from './types';
 
-type DeferredStitchItem = Awaited<ReturnType<typeof getStitchableEntities>>[0];
+type DeferredStitchItem = Awaited<
+  ReturnType<typeof getDeferredStitchableEntities>
+>[0];
 
 type StitchProgressTracker = ReturnType<typeof progressTracker>;
-
-type StitchingStrategy =
-  | {
-      mode: 'immediate';
-    }
-  | {
-      mode: 'deferred';
-      pollingInterval: HumanDuration;
-      stitchTimeout: HumanDuration;
-    };
 
 /**
  * Performs the act of stitching - to take all of the various outputs from the
@@ -65,7 +61,7 @@ export class DefaultStitcher implements Stitcher {
     return new DefaultStitcher({
       knex: options.knex,
       logger: options.logger,
-      strategy: DefaultStitcher.#readStitchingStrategy(config),
+      strategy: stitchingStrategyFromConfig(config),
     });
   }
 
@@ -87,7 +83,12 @@ export class DefaultStitcher implements Stitcher {
     const { entityRefs, entityIds } = options;
 
     if (this.strategy.mode === 'deferred') {
-      await markForStitching({ knex: this.knex, entityRefs, entityIds });
+      await markForStitching({
+        knex: this.knex,
+        strategy: this.strategy,
+        entityRefs,
+        entityIds,
+      });
       return;
     }
 
@@ -154,7 +155,7 @@ export class DefaultStitcher implements Stitcher {
 
   async #getStitchableEntities(count: number, stitchTimeout: HumanDuration) {
     try {
-      return await getStitchableEntities({
+      return await getDeferredStitchableEntities({
         knex: this.knex,
         batchSize: count,
         stitchTimeout: stitchTimeout,
@@ -179,6 +180,7 @@ export class DefaultStitcher implements Stitcher {
       const result = await performStitching({
         knex: this.knex,
         logger: this.logger,
+        strategy: this.strategy,
         entityRef: options.entityRef,
         stitchTicket: options.stitchTicket,
       });
@@ -186,23 +188,5 @@ export class DefaultStitcher implements Stitcher {
     } catch (error) {
       track.markFailed(error);
     }
-  }
-
-  static #readStitchingStrategy(config: Config): StitchingStrategy {
-    const strategyMode =
-      config.getOptionalString('catalog.stitchingStrategy.mode') ?? 'immediate';
-
-    if (strategyMode === 'deferred') {
-      // TODO(freben): Make parameters configurable
-      return {
-        mode: 'deferred',
-        pollingInterval: { seconds: 1 },
-        stitchTimeout: { seconds: 60 },
-      };
-    }
-
-    return {
-      mode: 'immediate',
-    };
   }
 }

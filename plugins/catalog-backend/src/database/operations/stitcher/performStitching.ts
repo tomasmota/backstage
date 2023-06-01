@@ -25,14 +25,15 @@ import { SerializedError } from '@backstage/errors';
 import { Knex } from 'knex';
 import { v4 as uuid } from 'uuid';
 import { Logger } from 'winston';
-import { BATCH_SIZE, generateStableHash } from './util';
+import { StitchingStrategy } from '../../../stitching/types';
 import {
   DbFinalEntitiesRow,
   DbRefreshStateRow,
   DbSearchRow,
 } from '../../tables';
 import { buildEntitySearch } from './buildEntitySearch';
-import { markStitchCompleted } from './markStitchCompleted';
+import { markDeferredStitchCompleted } from './markDeferredStitchCompleted';
+import { BATCH_SIZE, generateStableHash } from './util';
 
 // See https://github.com/facebook/react/blob/f0cf832e1d0c8544c36aa8b310960885a11a847c/packages/react-dom-bindings/src/shared/sanitizeURL.js
 const scriptProtocolPattern =
@@ -47,6 +48,7 @@ const scriptProtocolPattern =
 export async function performStitching(options: {
   knex: Knex | Knex.Transaction;
   logger: Logger;
+  strategy: StitchingStrategy;
   entityRef: string;
   stitchTicket?: string;
 }): Promise<'changed' | 'unchanged' | 'abandoned'> {
@@ -216,12 +218,13 @@ export async function performStitching(options: {
     .onConflict('entity_id')
     .merge(['final_entity', 'hash', 'last_updated_at']);
 
-  // This ensures that the entry is "dequeued".
-  await markStitchCompleted({
-    knex: knex,
-    entityRef,
-    stitchTicket,
-  });
+  if (options.strategy.mode === 'deferred') {
+    await markDeferredStitchCompleted({
+      knex: knex,
+      entityRef,
+      stitchTicket,
+    });
+  }
 
   if (amountOfRowsChanged === 0) {
     logger.debug(`Entity ${entityRef} is already stitched, skipping write.`);

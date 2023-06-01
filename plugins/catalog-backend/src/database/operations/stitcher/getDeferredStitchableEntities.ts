@@ -26,9 +26,11 @@ import { DbRefreshStateRow } from '../../tables';
 // and over again, for better or worse. This will be visible in metrics though.
 
 /**
- * Finds entities that are marked for stitching.
+ * Finds entities that are marked for deferred stitching.
  *
  * @remarks
+ *
+ * This assumes that the stitching strategy is set to deferred.
  *
  * They are expected to already have the next_stitch_ticket set (by
  * markForStitching) so that their tickets can be returned with each item.
@@ -38,7 +40,7 @@ import { DbRefreshStateRow } from '../../tables';
  * for stitching again in the future, if it hasn't completed by that point for
  * some reason (restarts, crashes, etc).
  */
-export async function getStitchableEntities(options: {
+export async function getDeferredStitchableEntities(options: {
   knex: Knex | Knex.Transaction;
   batchSize: number;
   stitchTimeout: HumanDuration;

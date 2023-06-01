@@ -54,7 +54,6 @@ describe('DefaultRefreshService', () => {
       processingDb: new DefaultProcessingDatabase({
         database: knex,
         logger,
-        stitcher: undefined as any,
         refreshInterval: () => 100,
       }),
       catalogDb: new DefaultCatalogDatabase({
@@ -110,7 +109,10 @@ describe('DefaultRefreshService', () => {
       }
     }
 
-    const stitcher = new DefaultStitcher(knex, defaultLogger);
+    const stitcher = DefaultStitcher.fromConfig(new ConfigReader({}), {
+      knex,
+      logger: defaultLogger,
+    });
     const engine = new DefaultCatalogProcessingEngine({
       config: new ConfigReader({}),
       logger: defaultLogger,

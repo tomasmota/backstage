@@ -22,15 +22,17 @@ import {
 import { assertError, serializeError, stringifyError } from '@backstage/errors';
 import { Hash } from 'crypto';
 import stableStringify from 'fast-json-stable-stringify';
+import { Knex } from 'knex';
 import { Logger } from 'winston';
 import { metrics } from '@opentelemetry/api';
 import { ProcessingDatabase, RefreshStateItem } from '../database/types';
 import { createCounterMetric, createSummaryMetric } from '../util/metrics';
 import { CatalogProcessingOrchestrator, EntityProcessingResult } from './types';
-import { Stitcher } from '../stitching/types';
+import { Stitcher, stitchingStrategyFromConfig } from '../stitching/types';
 import { startTaskPipeline } from './TaskPipeline';
 import { PluginTaskScheduler } from '@backstage/backend-tasks';
 import { Config } from '@backstage/config';
+import { deleteOrphanedEntities } from '../database/operations/util/deleteOrphanedEntities';
 
 const CACHE_TTL = 5;
 
@@ -46,6 +48,7 @@ export class DefaultCatalogProcessingEngine {
   private readonly config: Config;
   private readonly scheduler?: PluginTaskScheduler;
   private readonly logger: Logger;
+  private readonly knex: Knex;
   private readonly processingDatabase: ProcessingDatabase;
   private readonly orchestrator: CatalogProcessingOrchestrator;
   private readonly stitcher: Stitcher;
@@ -64,6 +67,7 @@ export class DefaultCatalogProcessingEngine {
     config: Config;
     scheduler?: PluginTaskScheduler;
     logger: Logger;
+    knex: Knex;
     processingDatabase: ProcessingDatabase;
     orchestrator: CatalogProcessingOrchestrator;
     stitcher: Stitcher;
@@ -79,6 +83,7 @@ export class DefaultCatalogProcessingEngine {
     this.config = options.config;
     this.scheduler = options.scheduler;
     this.logger = options.logger;
+    this.knex = options.knex;
     this.processingDatabase = options.processingDatabase;
     this.orchestrator = options.orchestrator;
     this.stitcher = options.stitcher;
@@ -313,20 +318,23 @@ export class DefaultCatalogProcessingEngine {
   }
 
   private startOrphanCleanup(): () => void {
-    const strategy =
+    const orphanStrategy =
       this.config.getOptionalString('catalog.orphanStrategy') ?? 'keep';
-    if (strategy !== 'delete') {
+    if (orphanStrategy !== 'delete') {
       return () => {};
     }
 
+    const stitchingStrategy = stitchingStrategyFromConfig(this.config);
+
     const runOnce = async () => {
       try {
-        await this.processingDatabase.transaction(async tx => {
-          const n = await this.processingDatabase.deleteOrphanedEntities(tx);
-          if (n > 0) {
-            this.logger.info(`Deleted ${n} orphaned entities`);
-          }
+        const n = await deleteOrphanedEntities({
+          knex: this.knex,
+          strategy: stitchingStrategy,
         });
+        if (n > 0) {
+          this.logger.info(`Deleted ${n} orphaned entities`);
+        }
       } catch (error) {
         this.logger.warn(`Failed to delete orphaned entities`, error);
       }

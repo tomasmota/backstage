@@ -282,6 +282,7 @@ class TestHarness {
       config: new ConfigReader({}),
       logger,
       processingDatabase,
+      knex: db,
       orchestrator,
       stitcher,
       createHash: () => createHash('sha1'),
