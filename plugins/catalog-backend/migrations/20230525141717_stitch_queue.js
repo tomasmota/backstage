@@ -59,15 +59,17 @@ exports.up = async function up(knex) {
     // the processing output entity hash was forcibly set to something short
     .orWhere(knex.raw('LENGTH(??) < 15', ['refresh_state.result_hash']));
   if (candidates.length) {
-    await knex('refresh_state')
-      .update({
-        next_stitch_at: knex.fn.now(),
-        next_stitch_ticket: 'initial',
-      })
-      .whereIn(
-        'entity_id',
-        candidates.map(c => c.entityId),
-      );
+    for (let i = 0; i < candidates.length; i += 1000) {
+      await knex('refresh_state')
+        .update({
+          next_stitch_at: knex.fn.now(),
+          next_stitch_ticket: 'initial',
+        })
+        .whereIn(
+          'entity_id',
+          candidates.slice(i, i + 1000).map(c => c.entityId),
+        );
+    }
   }
 };
 
