@@ -19,7 +19,9 @@ import {
   createServiceFactory,
 } from '@backstage/backend-plugin-api';
 import { TestDatabases, startTestBackend } from '@backstage/backend-test-utils';
+import { ConfigReader } from '@backstage/config';
 import { catalogPlugin } from '@backstage/plugin-catalog-backend/alpha';
+import { JsonObject } from '@backstage/types';
 import { Knex } from 'knex';
 import { applyDatabaseMigrations } from '../../database/migrations';
 import {
@@ -154,6 +156,14 @@ function staticDatabase(knex: Knex) {
   });
 }
 
+function staticConfig(config: JsonObject) {
+  return createServiceFactory({
+    service: coreServices.config,
+    deps: {},
+    factory: () => new ConfigReader(config),
+  });
+}
+
 jest.setTimeout(600_000);
 
 describePerformanceTest('stitchingPerformance', () => {
@@ -174,10 +184,52 @@ describePerformanceTest('stitchingPerformance', () => {
         childrenCount: 3,
       };
 
+      const config = {
+        backend: { baseUrl: 'http://localhost:7007' },
+        catalog: { stitchingStrategy: { mode: 'immediate' } },
+      };
+
       const tracker = new Tracker(knex, load);
 
       const backend = await startTestBackend({
-        services: [staticDatabase(knex)],
+        services: [staticDatabase(knex), staticConfig(config)],
+        features: [
+          catalogPlugin(),
+          catalogModuleSyntheticLoadEntities({
+            load,
+            events: tracker.events(),
+          }),
+        ],
+      });
+
+      await expect(tracker.completion()).resolves.toBeUndefined();
+      await backend.stop();
+      await knex.destroy();
+    },
+  );
+
+  it.each(databases.eachSupportedId())(
+    'runs stitching in deferred mode, %p',
+    async databaseId => {
+      const knex = await databases.init(databaseId);
+      await applyDatabaseMigrations(knex);
+
+      const load: SyntheticLoadOptions = {
+        baseEntitiesCount: 1000,
+        baseRelationsCount: 3,
+        baseRelationsSkew: 0.3,
+        childrenCount: 3,
+      };
+
+      const config = {
+        backend: { baseUrl: 'http://localhost:7007' },
+        catalog: { stitchingStrategy: { mode: 'deferred' } },
+      };
+
+      const tracker = new Tracker(knex, load);
+
+      const backend = await startTestBackend({
+        services: [staticDatabase(knex), staticConfig(config)],
         features: [
           catalogPlugin(),
           catalogModuleSyntheticLoadEntities({
