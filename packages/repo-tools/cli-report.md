@@ -14,6 +14,7 @@ Options:
 Commands:
   api-reports [options] [paths...]
   type-deps
+  create-fix-package-info-yamls [options]
   schema [command]
   help [command]
 ```
@@ -33,6 +34,16 @@ Options:
   --allow-all-warnings
   -o, --omit-messages <messageCodes>
   --validate-release-tags
+  -h, --help
+```
+
+### `backstage-repo-tools create-fix-package-info-yamls`
+
+```
+Usage: backstage-repo-tools create-fix-package-info-yamls [options]
+
+Options:
+  --dry-run
   -h, --help
 ```
 
