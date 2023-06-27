@@ -92,6 +92,9 @@
     "*.{json,md}": [
       "prettier --write"
     ],
+    "{plugins,packages}/*/{package.json,catalog-info.yaml}": [
+      "backstage-repo-tools create-fix-package-info-yamls"
+    ],
     "*.md": [
       "node ./scripts/check-docs-quality"
     ],
