@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-plugin-microsoft-calendar
+  title: '@backstage/plugin-microsoft-calendar'
+spec:
+  lifecycle: experimental
+  type: backstage-package
+  backstageRole: frontend-plugin
+  owner: NishkarshRaj

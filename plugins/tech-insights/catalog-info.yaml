@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-plugin-tech-insights
+  title: '@backstage/plugin-tech-insights'
+spec:
+  lifecycle: experimental
+  type: backstage-package
+  backstageRole: frontend-plugin
+  owner: maintainers

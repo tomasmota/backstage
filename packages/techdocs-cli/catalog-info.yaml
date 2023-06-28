@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: techdocs-cli
+  title: '@techdocs/cli'
+  description: Utility CLI for managing TechDocs sites in Backstage.
+spec:
+  lifecycle: experimental
+  type: backstage-package
+  backstageRole: cli
+  owner: techdocs-maintainers

@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-integration-react
+  title: '@backstage/integration-react'
+  description: Frontend package for managing integrations towards external systems
+spec:
+  lifecycle: experimental
+  type: backstage-package
+  backstageRole: web-library
+  owner: maintainers

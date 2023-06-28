@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-plugin-azure-devops-common
+  title: '@backstage/plugin-azure-devops-common'
+spec:
+  lifecycle: experimental
+  type: backstage-package
+  backstageRole: common-library
+  owner: awanlin

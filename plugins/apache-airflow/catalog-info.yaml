@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-plugin-apache-airflow
+  title: '@backstage/plugin-apache-airflow'
+spec:
+  lifecycle: experimental
+  type: backstage-package
+  backstageRole: frontend-plugin
+  owner: cmpadden

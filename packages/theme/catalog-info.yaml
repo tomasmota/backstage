@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-theme
+  title: '@backstage/theme'
+  description: material-ui theme for use with Backstage.
+spec:
+  lifecycle: experimental
+  type: backstage-package
+  backstageRole: web-library
+  owner: maintainers

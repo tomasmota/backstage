@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-plugin-apollo-explorer
+  title: '@backstage/plugin-apollo-explorer'
+spec:
+  lifecycle: experimental
+  type: backstage-package
+  backstageRole: frontend-plugin
+  owner: maintainers

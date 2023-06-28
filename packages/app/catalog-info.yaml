@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: example-app
+  title: example-app
+spec:
+  lifecycle: experimental
+  type: backstage-package
+  backstageRole: frontend
+  owner: maintainers

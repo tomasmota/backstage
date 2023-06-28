@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-plugin-ilert
+  title: '@backstage/plugin-ilert'
+  description: A Backstage plugin that integrates towards iLert
+spec:
+  lifecycle: experimental
+  type: backstage-package
+  backstageRole: frontend-plugin
+  owner: yacut

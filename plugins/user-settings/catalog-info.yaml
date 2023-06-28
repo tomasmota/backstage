@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-plugin-user-settings
+  title: '@backstage/plugin-user-settings'
+  description: A Backstage plugin that provides a settings page
+spec:
+  lifecycle: experimental
+  type: backstage-package
+  backstageRole: frontend-plugin
+  owner: maintainers

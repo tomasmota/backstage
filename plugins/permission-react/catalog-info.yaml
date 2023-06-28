@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-plugin-permission-react
+  title: '@backstage/plugin-permission-react'
+spec:
+  lifecycle: experimental
+  type: backstage-package
+  backstageRole: web-library
+  owner: permission-maintainers

@@ -1,0 +1,10 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-plugin-devtools-backend
+  title: '@backstage/plugin-devtools-backend'
+spec:
+  lifecycle: experimental
+  type: backstage-package
+  backstageRole: backend-plugin
+  owner: awanlin

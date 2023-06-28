@@ -1,0 +1,13 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-plugin-search-backend-node
+  title: '@backstage/plugin-search-backend-node'
+  description: >-
+    A library for Backstage backend plugins that want to interact with the
+    search backend plugin
+spec:
+  lifecycle: experimental
+  type: backstage-package
+  backstageRole: node-library
+  owner: discoverability-maintainers

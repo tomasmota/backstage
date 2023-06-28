@@ -1,0 +1,11 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: backstage-plugin-cloudbuild
+  title: '@backstage/plugin-cloudbuild'
+  description: A Backstage plugin that integrates towards Google Cloud Build
+spec:
+  lifecycle: experimental
+  type: backstage-package
+  backstageRole: frontend-plugin
+  owner: ebarrios
