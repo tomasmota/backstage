@@ -1,5 +1,11 @@
 # @backstage/plugin-playlist
 
+## 0.1.13-next.1
+
+### Patch Changes
+
+- d1e0588324d1: Displaying an alert popup each time the Playlist is created or deleted
+
 ## 0.1.13-next.0
 
 ### Patch Changes
